@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Translate</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+      :root {
+        --bg-primary: #0c1222;
+        --bg-secondary: #111827;
+        --bg-card: rgba(17, 24, 39, 0.85);
+        --accent-cyan: #06b6d4;
+        --accent-teal: #14b8a6;
+        --accent-amber: #f59e0b;
+        --accent-glow: rgba(6, 182, 212, 0.45);
+        --text-primary: #f1f5f9;
+        --text-muted: #94a3b8;
+        --border: rgba(148, 163, 184, 0.2);
+        --success: #22c55e;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+        background-image:
+          radial-gradient(
+            ellipse 120% 80% at 20% 10%,
+            rgba(6, 182, 212, 0.15) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse 100% 60% at 80% 90%,
+            rgba(245, 158, 11, 0.1) 0%,
+            transparent 45%
+          );
+      }
+
+      .brand-header {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 1rem 1.25rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        background: linear-gradient(
+          90deg,
+          var(--accent-cyan),
+          var(--accent-teal),
+          var(--accent-amber)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: fadeInDown 0.5s ease-out;
+      }
+
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem;
+        animation: fadeIn 0.8s ease-out 0.2s both;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h1 {
+        font-size: clamp(1.5rem, 4vw, 1.75rem);
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--accent-cyan),
+          var(--accent-teal)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: fadeIn 0.6s ease-out 0.3s both;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+        animation: fadeIn 0.6s ease-out 0.4s both;
+      }
+
+      .card {
+        background: #151d2e;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        animation: cardIn 0.5s ease-out 0.2s both;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+      }
+
+      @keyframes cardIn {
+        from {
+          opacity: 0;
+          transform: translateY(24px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        animation: fadeIn 0.5s ease-out 0.4s both;
+      }
+
+      #sentenceInput {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        font-size: 1rem;
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        resize: vertical;
+        min-height: 80px;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      #sentenceInput::placeholder {
+        color: var(--text-muted);
+        opacity: 0.8;
+      }
+
+      #sentenceInput:focus {
+        outline: none;
+        border-color: var(--accent-cyan);
+        box-shadow: 0 0 0 3px var(--accent-glow);
+      }
+
+      .btn {
+        width: 100%;
+        margin-top: 1rem;
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        background: linear-gradient(
+          135deg,
+          var(--accent-cyan),
+          var(--accent-teal)
+        );
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(6, 182, 212, 0.3);
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .btn:hover:not(:disabled) {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow:
+          0 8px 30px var(--accent-glow),
+          0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+      }
+
+      .btn:active:not(:disabled) {
+        transform: translateY(0) scale(0.99);
+        transition-duration: 0.1s;
+      }
+
+      .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      #resultArea {
+        margin-top: 1.5rem;
+        min-height: 120px;
+      }
+
+      .loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2rem;
+        color: var(--text-muted);
+      }
+
+      .spinner {
+        width: 44px;
+        height: 44px;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent-cyan);
+        border-right-color: var(--accent-teal);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading.hidden,
+      #resultContent.hidden {
+        display: none !important;
+      }
+
+      #resultContent {
+        overflow-x: auto;
+      }
+
+      #resultContent table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+
+      #resultContent th,
+      #resultContent td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #resultContent th {
+        background: rgba(6, 182, 212, 0.2);
+        color: var(--accent-cyan);
+        font-weight: 600;
+      }
+
+      #resultContent tr:last-child td {
+        border-bottom: none;
+      }
+
+      #resultContent tbody tr:hover td {
+        background: rgba(6, 182, 212, 0.08);
+      }
+
+      #resultContent td.copy-cell {
+        width: 1%;
+        white-space: nowrap;
+        padding: 0.5rem 0.75rem;
+        vertical-align: middle;
+      }
+
+      .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-muted);
+        cursor: pointer;
+        transition:
+          color 0.2s,
+          background 0.2s,
+          border-color 0.2s;
+      }
+
+      .copy-btn:hover {
+        color: var(--accent-cyan);
+        background: rgba(6, 182, 212, 0.15);
+        border-color: var(--accent-cyan);
+      }
+
+      .copy-btn:active {
+        transform: scale(0.96);
+      }
+
+      .copy-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .copy-btn.copy-ok {
+        color: #22c55e;
+        border-color: #22c55e;
+        background: rgba(34, 197, 94, 0.15);
+      }
+
+      .copy-btn.copy-fail {
+        color: #f87171;
+        border-color: #f87171;
+      }
+
+      .error-msg {
+        color: #f87171;
+        padding: 1rem;
+        background: rgba(248, 113, 113, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(248, 113, 113, 0.3);
+      }
+
+      @media (max-width: 640px) {
+        .container {
+          padding: 1.25rem 1rem;
+        }
+        #resultContent table {
+          font-size: 0.85rem;
+        }
+        #resultContent th,
+        #resultContent td {
+          padding: 0.6rem 0.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="brand-header">💻 Ziya Project 🚀</header>
+    <div class="container">
+      <h1>Cümlə Səviyyə Çevirici</h1>
+      <p class="subtitle">
+        Cümləni yazın — A1–C2 səviyyələrinə uyğun ingilis dilində variantlar
+        alın
+      </p>
+
+      <div class="card">
+        <label for="sentenceInput">Cümlə</label>
+        <textarea
+          id="sentenceInput"
+          placeholder="Məs: Sabah hava necə olacaq? və ya İstəyirəm ki, sən gələsən."
+        ></textarea>
+        <button type="button" class="btn" id="submitBtn">Dəyişdir</button>
+
+        <div id="resultArea">
+          <div class="loading hidden" id="loading">
+            <div class="spinner"></div>
+            <span>Düşünülür...</span>
+          </div>
+          <div id="resultContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var HIDDEN_PROMPT =
+          "Gələn cümlənin mənasını tam eyni saxlayaraq onu ingilis dilində A1, A2, B1, B2, C1 və C2 səviyyələrinə uyğun yenidən yaz. Cavabı yalnız HTML cədvəl formatında (table) qaytar, əlavə heç bir giriş və ya son söz yazma.";
+
+        var sentenceInput = document.getElementById("sentenceInput");
+        var submitBtn = document.getElementById("submitBtn");
+        var loadingEl = document.getElementById("loading");
+        var resultContent = document.getElementById("resultContent");
+
+        function showLoading(show) {
+          loadingEl.classList.toggle("hidden", !show);
+          if (show) {
+            resultContent.classList.add("hidden");
+            resultContent.innerHTML = "";
+          }
+          submitBtn.disabled = show;
+        }
+
+        function showResult(html) {
+          showLoading(false);
+          resultContent.classList.remove("hidden");
+          resultContent.innerHTML = html;
+          addCopyButtons();
+        }
+
+        function addCopyButtons() {
+          var table = resultContent.querySelector("table");
+          if (!table) return;
+          var thead = table.querySelector("thead");
+          if (thead && thead.rows.length) {
+            var headerRow = thead.rows[0];
+            var th = document.createElement("th");
+            th.setAttribute("scope", "col");
+            th.className = "copy-cell";
+            th.innerHTML = "";
+            headerRow.appendChild(th);
+          }
+          var rows = table.querySelectorAll("tbody tr");
+          rows.forEach(function (tr) {
+            var cells = tr.querySelectorAll("td");
+            if (cells.length === 0) return;
+            var sentenceCell = cells[cells.length - 1];
+            var text = (sentenceCell.textContent || "").trim();
+            var td = document.createElement("td");
+            td.className = "copy-cell";
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "copy-btn";
+            btn.title = "Panoya kopyala";
+            btn.setAttribute("aria-label", "Panoya kopyala");
+            btn.innerHTML =
+              '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            btn.addEventListener("click", function () {
+              copyToClipboard(text, btn);
+            });
+            td.appendChild(btn);
+            tr.appendChild(td);
+          });
+        }
+
+        function copyToClipboard(text, btn) {
+          if (!text) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+              function () {
+                showCopyFeedback(btn, true);
+              },
+              function () {
+                fallbackCopy(text, btn);
+              },
+            );
+          } else {
+            fallbackCopy(text, btn);
+          }
+        }
+
+        function fallbackCopy(text, btn) {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy");
+            showCopyFeedback(btn, true);
+          } catch (e) {
+            showCopyFeedback(btn, false);
+          }
+          document.body.removeChild(ta);
+        }
+
+        function showCopyFeedback(btn, success) {
+          var oldTitle = btn.title;
+          btn.title = success ? "Kopyalandı!" : "Kopyalama uğursuz";
+          btn.classList.add(success ? "copy-ok" : "copy-fail");
+          setTimeout(function () {
+            btn.title = oldTitle;
+            btn.classList.remove("copy-ok", "copy-fail");
+          }, 1200);
+        }
+
+        function showError(message) {
+          showLoading(false);
+          resultContent.classList.remove("hidden");
+          resultContent.innerHTML =
+            '<div class="error-msg">' + escapeHtml(message) + "</div>";
+        }
+
+        function escapeHtml(text) {
+          var div = document.createElement("div");
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        function extractTableHtml(raw) {
+          var text =
+            typeof raw === "string"
+              ? raw
+              : raw && raw.message && raw.message.content
+                ? raw.message.content
+                : "";
+          if (!text || typeof text !== "string") return "";
+          var tableMatch = text.match(/<table[\s\S]*?<\/table>/i);
+          return tableMatch ? tableMatch[0] : text;
+        }
+
+        submitBtn.addEventListener("click", function () {
+          var sentence = (sentenceInput.value || "").trim();
+          if (!sentence) {
+            showError("Zəhmət olmasa bir cümlə yazın.");
+            return;
+          }
+
+          var fullPrompt = HIDDEN_PROMPT + "\n\nCümlə: " + sentence;
+          showLoading(true);
+
+          puter.ai
+            .chat(fullPrompt)
+            .then(function (response) {
+              var html = extractTableHtml(response);
+              if (html) {
+                showResult(html);
+              } else {
+                showError("Cədvəl alınmadı. Yenidən cəhd edin.");
+              }
+            })
+            .catch(function (err) {
+              showError(
+                err && (err.message || err.toString)
+                  ? err.message || err.toString()
+                  : "Xəta baş verdi. Yenidən cəhd edin.",
+              );
+            });
+        });
+      })();
+    </script>
+  </body>
+</html>
