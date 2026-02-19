@@ -1,7 +1,7 @@
 :root {
     --bg-color: #0f172a;
     --card-bg: #1e293b;
-    --primary-color: #6366f1; /* Indigo */
+    --primary-color: #6366f1; 
     --primary-hover: #4f46e5;
     --text-color: #f8fafc;
     --text-secondary: #94a3b8;
@@ -109,7 +109,6 @@ button:active {
     display: none !important;
 }
 
-/* Loading Animation */
 #loading {
     display: flex;
     flex-direction: column;
@@ -136,7 +135,7 @@ button:active {
 #result {
     margin-top: 30px;
     animation: fadeIn 0.5s ease-in-out;
-    overflow-x: auto; /* For table responsiveness */
+    overflow-x: auto; 
 }
 
 @keyframes fadeIn {
@@ -144,7 +143,6 @@ button:active {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Table Styles - AI Output */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -183,7 +181,6 @@ footer {
     font-size: 0.9rem;
 }
 
-/* Responsive Design */
 @media (max-width: 600px) {
     .container {
         padding: 20px;
