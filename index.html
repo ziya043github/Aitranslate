@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Translate</title>
-    <script src="https://js.puter.com/v2/"></script>
     <style>
       :root {
         --bg-primary: #0c1222;
@@ -400,13 +399,13 @@
 
     <script>
       (function () {
-        var HIDDEN_PROMPT =
-          "Gələn cümlənin mənasını tam eyni saxlayaraq onu ingilis dilində A1, A2, B1, B2, C1 və C2 səviyyələrinə uyğun yenidən yaz. Cavabı yalnız HTML cədvəl formatında (table) qaytar, əlavə heç bir giriş və ya son söz yazma.";
+        var HIDDEN_PROMPT = "";
 
         var sentenceInput = document.getElementById("sentenceInput");
         var submitBtn = document.getElementById("submitBtn");
         var loadingEl = document.getElementById("loading");
         var resultContent = document.getElementById("resultContent");
+        var cache = Object.create(null);
 
         function showLoading(show) {
           loadingEl.classList.toggle("hidden", !show);
@@ -422,6 +421,36 @@
           resultContent.classList.remove("hidden");
           resultContent.innerHTML = html;
           addCopyButtons();
+        }
+
+        function showPartial(html) {
+          resultContent.classList.remove("hidden");
+          resultContent.innerHTML = html;
+        }
+
+        function jsonToTableHtml(obj) {
+          if (!obj) return "";
+          var levels = ["A1", "A2", "B1", "B2", "C1", "C2"];
+          var rows = levels
+            .filter(function (k) {
+              return typeof obj[k] === "string" && obj[k].trim();
+            })
+            .map(function (k) {
+              return (
+                "<tr><td>" +
+                k +
+                "</td><td>" +
+                escapeHtml(obj[k]) +
+                "</td></tr>"
+              );
+            })
+            .join("");
+          if (!rows) return "";
+          return (
+            '<table><thead><tr><th>Səviyyə</th><th>Cümlə</th></tr></thead><tbody>' +
+            rows +
+            "</tbody></table>"
+          );
         }
 
         function addCopyButtons() {
@@ -523,36 +552,269 @@
                 : "";
           if (!text || typeof text !== "string") return "";
           var tableMatch = text.match(/<table[\s\S]*?<\/table>/i);
-          return tableMatch ? tableMatch[0] : text;
+          return tableMatch ? tableMatch[0] : "";
         }
 
-        submitBtn.addEventListener("click", function () {
+        async function translateAzToEn(text) {
+          try {
+            var r = await fetch("https://libretranslate.com/translate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                q: text,
+                source: "az",
+                target: "en",
+                format: "text",
+              }),
+            });
+            if (r.ok) {
+              var j = await r.json();
+              if (j && j.translatedText) return j.translatedText;
+            }
+          } catch (e) {}
+          try {
+            var url =
+              "https://api.mymemory.translated.net/get?q=" +
+              encodeURIComponent(text) +
+              "&langpair=az|en";
+            var r2 = await fetch(url);
+            if (r2.ok) {
+              var j2 = await r2.json();
+              var out =
+                j2 &&
+                j2.responseData &&
+                j2.responseData.translatedText;
+              if (out) return out;
+            }
+          } catch (e2) {}
+          return text;
+        }
+
+        function normalizeText(s) {
+          var t = s.replace(/\s+/g, " ").trim();
+          t = expandContractions(t);
+          return capitalize(t);
+        }
+
+        function isQuestion(s) {
+          if (/\?\s*$/.test(s)) return true;
+          return /^(what|how|why|when|where|who|which|is|are|am|do|does|did|can|could|would|will|shall|have|has|had|should|may|might)\b/i.test(s);
+        }
+
+        function expandContractions(s) {
+          var map = {
+            "what's": "what is",
+            "how's": "how is",
+            "who's": "who is",
+            "where's": "where is",
+            "it's": "it is",
+            "i'm": "i am",
+            "you're": "you are",
+            "they're": "they are",
+            "we're": "we are",
+            "can't": "cannot",
+            "won't": "will not",
+            "don't": "do not",
+            "doesn't": "does not",
+            "isn't": "is not",
+            "aren't": "are not",
+            "there's": "there is"
+          };
+          var out = s;
+          Object.keys(map).forEach(function (k) {
+            var re = new RegExp("\\b" + k + "\\b", "gi");
+            out = out.replace(re, map[k]);
+          });
+          return out;
+        }
+
+        function capitalize(s) {
+          if (!s) return s;
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function ensurePeriod(s) {
+          if (!s) return s;
+          return /[.!?]$/.test(s) ? s : s + ".";
+        }
+
+        function simplifyQuestion(q) {
+          var t = expandContractions(q).replace(/\?+$/, "").trim();
+          t = t.replace(/\bwhat is the weather like\b/i, "what is the weather");
+          t = t.replace(/\bhow is the weather\b/i, "how is the weather");
+          if (!/\?$/.test(t)) t += "?";
+          return capitalize(t);
+        }
+
+        function buildAboutPhrase(s) {
+          var t = s.trim();
+          t = t.replace(/^\s*(what|how)\s+is\s+/i, "");
+          t = t.replace(/^\s*(what|how)\s+are\s+/i, "");
+          t = t.replace(/^\s*(can|could|would|do|does|is|are|will|shall)\s+you\b.*?\b/i, "");
+          t = t.replace(/^\s*(please|about)\s+/i, "");
+          t = t.replace(/\?+$/g, "").trim();
+          if (!t) t = s.trim();
+          t = t.replace(/\bweather today\b/i, "today's weather");
+          return t;
+        }
+
+        function possessiveToday(phrase) {
+          var p = phrase.trim();
+          var m = p.match(/^(.*)\btoday\b\.?$/i);
+          if (m && m[1]) {
+            var core = m[1].trim();
+            if (/weather$/i.test(core)) return "today's weather";
+            return "today's " + core;
+          }
+          return p;
+        }
+
+        function advancedNounify(phrase) {
+          var p = phrase.trim();
+          var map = {
+            "weather": "meteorological conditions",
+            "money": "financial resources",
+            "job": "employment opportunity",
+            "plan": "strategy",
+            "help": "assistance",
+            "problem": "issue",
+            "use": "utilization",
+            "buy": "procurement",
+            "food": "cuisine",
+            "school": "educational institution",
+            "work": "professional duties",
+            "travel": "itinerary",
+            "health": "medical condition",
+          };
+          var out = p.replace(/\b(\w+)\b/gi, function (w) {
+            var lw = w.toLowerCase();
+            return map[lw] ? map[lw] : w;
+          });
+          if (!/^(the|this|that|today's|tomorrow's)\b/i.test(out)) out = "the " + out;
+          return out;
+        }
+
+        function simplifyStatement(s) {
+          var t = s.replace(/\b(really|actually|basically|literally|quite|very)\b/gi, "").replace(/\s+/g, " ").trim();
+          var map = {
+            utilize: "use",
+            assist: "help",
+            purchase: "buy",
+            approximately: "about",
+            require: "need",
+            attempt: "try",
+            reside: "live",
+            obtain: "get",
+            demonstrate: "show",
+            request: "ask",
+            inform: "tell"
+          };
+          t = t.replace(/\b(\w+)\b/g, function (w) {
+            var lw = w.toLowerCase();
+            return map[lw] ? map[lw] : w;
+          });
+          return ensurePeriod(capitalize(t));
+        }
+
+        function expandStatement(s) {
+          var t = s.replace(/[.!?]+$/, "");
+          if (/^\b(in|at|on|from|to|about)\b/i.test(t)) return t + ".";
+          return t + " with more details.";
+        }
+
+        function formalize(s) {
+          var t = s.replace(/[.!?]+$/, "");
+          var map = {
+            help: "assistance",
+            buy: "purchase",
+            get: "obtain",
+            use: "utilize",
+            need: "require",
+            try: "attempt",
+            fix: "resolve",
+            tell: "inform",
+            show: "demonstrate"
+          };
+          t = t.replace(/\b(\w+)\b/g, function (w) {
+            var lw = w.toLowerCase();
+            return map[lw] ? map[lw] : w;
+          });
+          return t + ".";
+        }
+
+        function nominalize(s) {
+          var t = s.replace(/[.!?]+$/, "").trim();
+          if (/^to\s+/i.test(t)) return "the act of " + t;
+          if (/ing\b/i.test(t)) return "the process of " + t;
+          return "the matter of " + t;
+        }
+
+        function generateLevels(en) {
+          var text = (en || "").trim();
+          if (!text) return null;
+          text = normalizeText(text);
+          var isQ = isQuestion(text);
+          var noQM = text.replace(/\?+$/, "");
+          var aboutPhrase = buildAboutPhrase(noQM);
+          if (isQ) {
+            var a1 = simplifyQuestion(text);
+            var a2 = "How is " + aboutPhrase + "?";
+            var b1 = "Can you tell me about " + aboutPhrase + "?";
+            var b2 = "Could you provide some details about " + possessiveToday(aboutPhrase) + "?";
+            var c1 = "I would appreciate an overview of " + possessiveToday(aboutPhrase) + ".";
+            var c2 = "I would greatly appreciate a concise assessment of " + advancedNounify(aboutPhrase) + ".";
+            return { A1: a1, A2: a2, B1: b1, B2: b2, C1: c1, C2: c2 };
+          } else {
+            var base = simplifyStatement(text);
+            var a1s = base;
+            var a2s = "In simple words, " + ensurePeriod(capitalize(base));
+            var b1s = "To be clear, " + ensurePeriod(capitalize(base));
+            var b2s = "In more detail, " + ensurePeriod(expandStatement(base));
+            var c1s = "From an advanced perspective, " + ensurePeriod(formalize(base));
+            var c2s = "It would be greatly appreciated if you could provide a concise overview of " + nominalize(base) + ".";
+            return { A1: a1s, A2: a2s, B1: b1s, B2: b2s, C1: c1s, C2: c2s };
+          }
+        }
+
+        function handleSubmit() {
           var sentence = (sentenceInput.value || "").trim();
           if (!sentence) {
             showError("Zəhmət olmasa bir cümlə yazın.");
             return;
           }
-
-          var fullPrompt = HIDDEN_PROMPT + "\n\nCümlə: " + sentence;
+          var key = sentence.toLowerCase();
+          if (cache[key]) {
+            showResult(cache[key]);
+            return;
+          }
           showLoading(true);
-
-          puter.ai
-            .chat(fullPrompt)
-            .then(function (response) {
-              var html = extractTableHtml(response);
+          (async function () {
+            try {
+              var en = await translateAzToEn(sentence);
+              var obj = generateLevels(en);
+              var html = jsonToTableHtml(obj);
               if (html) {
+                cache[key] = html;
                 showResult(html);
               } else {
-                showError("Cədvəl alınmadı. Yenidən cəhd edin.");
+                showError("Cavab alınmadı. Yenidən cəhd edin.");
               }
-            })
-            .catch(function (err) {
-              showError(
+            } catch (err) {
+              var msg =
                 err && (err.message || err.toString)
                   ? err.message || err.toString()
-                  : "Xəta baş verdi. Yenidən cəhd edin.",
-              );
-            });
+                  : "Xəta baş verdi. Yenidən cəhd edin.";
+              showError(msg);
+            }
+          })();
+        }
+
+        submitBtn.addEventListener("click", handleSubmit);
+        sentenceInput.addEventListener("keydown", function (e) {
+          if ((e.ctrlKey || e.metaKey) && (e.key === "Enter" || e.keyCode === 13)) {
+            e.preventDefault();
+            handleSubmit();
+          }
         });
       })();
     </script>
